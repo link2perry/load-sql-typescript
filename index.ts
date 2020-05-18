@@ -13,6 +13,16 @@ let _flatten = (param?: string) => {
   return '';
 }
 
+export interface SqlResult {
+  sql?: string,
+  params?: string[]
+}
+
+export class SqlResultImpl {
+  sql?: string;
+  params?: string[];
+}
+
 export interface QueryOptions {
   dbType?: string,
   filtering?: string,
@@ -33,44 +43,26 @@ export default class LoadSql {
     this.sqlCache = {};
   }
 
-  load(file: string, q: QueryOptions = new QueryOptionsImpl(), callback: Function) {
-
+  async load(file: string, q?: QueryOptions) {
     let dbType = q && q.dbType ? ('' + q.dbType).toLowerCase() : 'mysql';
-
     if(dbType === 'mysql') {
-      if(typeof callback === 'undefined') {
-        return new Promise(succeed => {
-          this.loadAndCallbackForMysql(file, q, (sql: string, params: any) => {
-            succeed({sql, params});
-          })
-        });
-      } else {
-        this.loadAndCallbackForMysql(file, q, callback);
-      }
+      return this.loadForMysql(file, q);
     } else if(dbType === 'mssql') {
-      if(typeof callback === 'undefined') {
-        return new Promise(succeed => {
-          this.loadAndCallbackForMssql(file, q, (sql: string, params: any) => {
-            succeed({sql, params});
-          })
-        });
-      } else {
-        this.loadAndCallbackForMssql(file, q, callback);
-      }
+      return this.loadForMssql(file, q);
     } else {
       throw new Error(`Unsupported database type: ${dbType}`);
     }
   }
 
-  loadAndCallbackForMysql (file: string, q: QueryOptions = new QueryOptionsImpl(), callback: Function) {
+  async loadForMysql (file: string, q?: QueryOptions) {
     let params: any = null;
     let orderBy: string[] = [];
     let where: string[] = [];
-    if(typeof q !== 'undefined') {
-      if(typeof q.sorting !== 'undefined') {
+    if(q !== undefined) {
+      if(q.sorting !== undefined) {
         orderBy = q.sorting.split('@@@').map(s => _flatten(s));
       }
-      if(typeof q.filtering !== 'undefined') {
+      if(q.filtering !== undefined) {
         where = q.filtering.split('@@@');
         where = where.map(i => {
           let splitForOr = i.split('|||');
@@ -83,7 +75,7 @@ export default class LoadSql {
         });
       }    
 
-      if(typeof q.matching !== 'undefined') {
+      if(q.matching !== undefined) {
         let m = q.matching.split('@@@');
         m = m.map((i) => {
           let splitForOr = i.split('|||');
@@ -97,7 +89,7 @@ export default class LoadSql {
         where.push(...m);
       }
 
-      if(typeof q.matching !== 'undefined' || typeof q.filtering !== 'undefined') {
+      if(q.matching !== undefined || q.filtering !== undefined) {
         where = where.map(wrapThis => {
           return ' ( ' + wrapThis + ' ) ';
         });
@@ -106,7 +98,7 @@ export default class LoadSql {
 
       let page: number;
       let size: number;
-      if(typeof q.page !== 'undefined' && typeof q.size !== 'undefined') {
+      if(q.page !== undefined && q.size !== undefined) {
         size = parseInt(q.size, 10);
         page = parseInt(q.page, 10);
         params = [(page * size), size];
@@ -125,48 +117,64 @@ export default class LoadSql {
       if(params) {
         sql += ' limit ?, ?';
         // console.log('sql: ', sql, params);
-        callback(sql, params);
+        const result: SqlResult = {
+          sql: sql,
+          params: params
+        }
+        return result;
       } else {
         // console.log('sql: ', sql);
-        callback(sql);
+        const result: SqlResult = {
+          sql: sql
+        }
+        return result;
       }
     } else {
       let me = this;
-      
-      fs.readFile(this.sqlDir + file + '.sql', (err: any, data: Buffer) => {
-        let sql: string = data.toString('utf8');
-        if (err){
-          console.log(err);
-        } else {
-          me.sqlCache[file] = sql;
-          if(where.length > 0) {
-            sql = 'select * from (' + sql  + ') temp where ' + where.join(' and ');
-          }
-          if(orderBy.length > 0) {
-            sql = 'select * from (' + sql  + ') temp order by ' + orderBy.join(',') + ' ';
-          }
-          if(params) {
-            sql += ' limit ?, ?';
-            // console.log("sql: ", sql, params);
-            callback(sql, params);
-          } else {
-            // console.log("sql: ",sql)
-            callback(sql);
-          }
+      try {
+        let data: Buffer = fs.readFileSync(this.sqlDir + file + '.sql')
+        let sql: string = '';
+        if(data) {
+         sql = data.toString('utf8');
         }
-      });
+        me.sqlCache[file] = sql;
+        if(where.length > 0) {
+          sql = 'select * from (' + sql  + ') temp where ' + where.join(' and ');
+        }
+        if(orderBy.length > 0) {
+          sql = 'select * from (' + sql  + ') temp order by ' + orderBy.join(',') + ' ';
+        }
+        if(params) {
+          sql += ' limit ?, ?';
+          // console.log("sql: ", sql, params);
+          const result: SqlResult = {
+            sql: sql,
+            params: params
+          }
+          return result;
+        } else {
+          // console.log("sql: ",sql)
+          const result: SqlResult = {
+            sql: sql
+          }
+          return result;
+        }
+      } catch (err) {
+        console.log(err);
+        throw err;
+      }
     }
   }
 
-  loadAndCallbackForMssql (file: string, q: QueryOptions = new QueryOptionsImpl(), callback: Function) {
+  loadForMssql (file: string, q?: QueryOptions) {
     let params: any = null;
     let orderBy: string[] = [];
     let where: string[] = [];
-    if(typeof q !== 'undefined') {
-      if(typeof q.sorting !== 'undefined') {
+    if(q !== undefined) {
+      if(q.sorting !== undefined) {
         orderBy = q.sorting.split('@@@').map(s => _flatten(s));
       }
-      if(typeof q.filtering !== 'undefined') {
+      if(q.filtering !== undefined) {
         where = q.filtering.split('@@@');
         where = where.map(i => {
           let splitForOr = i.split('|||');
@@ -179,7 +187,7 @@ export default class LoadSql {
         });
       }    
 
-      if(typeof q.matching !== 'undefined') {
+      if(q.matching !== undefined) {
         let m = q.matching.split('@@@');
         m = m.map((i) => {
           let splitForOr = i.split('|||');
@@ -193,7 +201,7 @@ export default class LoadSql {
         where.push(...m);
       }
 
-      if(typeof q.matching !== 'undefined' || typeof q.filtering !== 'undefined') {
+      if(q.matching !== undefined || q.filtering !== undefined) {
         where = where.map(wrapThis => {
           return ' ( ' + wrapThis + ' ) ';
         });
@@ -202,7 +210,7 @@ export default class LoadSql {
 
       let page: number;
       let size: number;
-      if(typeof q.page !== 'undefined' && typeof q.size !== 'undefined') {
+      if(q.page !== undefined && q.size !== undefined) {
         size = parseInt(q.size, 10);
         page = parseInt(q.page, 10);
         let offset = page * size;
@@ -227,31 +235,41 @@ export default class LoadSql {
         sql += ` OFFSET @_offset ROWS FETCH NEXT @_size ROWS ONLY`;
       }
       // console.log('sql: ', sql);
-      callback(sql, params);
+      const result: SqlResult = {
+        sql: sql,
+        params: params
+      }
+      return result;
     } else {
       let me = this;
-      fs.readFile(this.sqlDir + file + '.sql', (err: any, data: Buffer) => {
-        let sql: string = data.toString('utf8');
-        if (err){
-          console.log(err);
-        } else {
-          me.sqlCache[file] = sql;
-          if(where.length > 0) {
-            sql = 'select * from (' + sql  + ') temp where ' + where.join(' and ');
-          }
-          if(orderBy.length > 0) {
-            sql = 'select * from (' + sql  + ') temp order by ' + orderBy.join(',') + ' ';
-          } else if(params && !hasOrder.test(sql)) {
-            sql += ' order by (select null)';
-          }
-
-          if(params) {
-            sql += ` OFFSET @_offset ROWS FETCH NEXT @_size ROWS ONLY`;
-          }
-          // console.log("sql: ",sql)
-          callback(sql, params);
+      try {
+        let data: Buffer = fs.readFileSync(this.sqlDir + file + '.sql');
+        let sql: string = '';
+        if(data) {
+          sql = data.toString('utf8');
         }
-      });
+        me.sqlCache[file] = sql;
+        if(where.length > 0) {
+          sql = 'select * from (' + sql  + ') temp where ' + where.join(' and ');
+        }
+        if(orderBy.length > 0) {
+          sql = 'select * from (' + sql  + ') temp order by ' + orderBy.join(',') + ' ';
+        } else if(params && !hasOrder.test(sql)) {
+          sql += ' order by (select null)';
+        }
+
+        if(params) {
+          sql += ` OFFSET @_offset ROWS FETCH NEXT @_size ROWS ONLY`;
+        }
+        // console.log("sql: ",sql)
+        const result: SqlResult = {
+          sql: sql,
+          params: params
+        }
+        return result;
+      } catch (err) {
+        console.log(err);
+      }
     }
   }
 }

@@ -3,7 +3,11 @@
   "dependencies": {},
   "description": "",
   "devDependencies": {
-    "@types/node": "^14.0.1"
+    "@types/node": "^14.0.1",
+    "@types/chai": "^4.2.11",
+    "@types/mocha": "^7.0.2",
+    "chai": "^4.2.0",
+    "mocha": "^5.2.0"
   },
   "directories": {},
   "license": "ISC",
@@ -18,7 +22,7 @@
   "optionalDependencies": {},
   "readme": "ERROR: No README data found!",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha test/*.js"
   },
-  "version": "1.0.22"
+  "version": "1.0.23"
 }
