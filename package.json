@@ -7,7 +7,7 @@
   },
   "directories": {},
   "license": "ISC",
-  "main": "index.js",
+  "main": "index.ts",
   "maintainers": [
     {
       "name": "sei-atl",
