@@ -39,7 +39,7 @@ export default class LoadSql {
   sqlCache: any;
 
   constructor(sqlDir: string) {
-    this.sqlDir = sqlDir;
+    this.sqlDir = sqlDir.endsWith('/') ? sqlDir : `${sqlDir}/`;
     this.sqlCache = {};
   }
 
