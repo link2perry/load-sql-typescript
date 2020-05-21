@@ -1,6 +1,9 @@
 export interface SqlResult {
     sql?: string;
-    params?: string[];
+    params?: {
+        offset: number;
+        pageSize: number;
+    };
 }
 export interface QueryOptions {
     dbType?: string;

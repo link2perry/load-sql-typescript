@@ -15,7 +15,10 @@ let _flatten = (param?: string) => {
 
 export interface SqlResult {
   sql?: string,
-  params?: string[]
+  params?: {
+    offset: number,
+    pageSize: number
+  }
 }
 
 export interface QueryOptions {
@@ -48,7 +51,7 @@ export default class LoadSql {
   }
 
   async loadForMysql (file: string, q?: QueryOptions): Promise<SqlResult> {
-    let params: any = null;
+    let params = undefined;
     let orderBy: string[] = [];
     let where: string[] = [];
     if(q !== undefined) {
@@ -83,8 +86,8 @@ export default class LoadSql {
       }
 
       if(q.matching !== undefined || q.filtering !== undefined) {
-        where = where.map(wrapThis => {
-          return ' ( ' + wrapThis + ' ) ';
+        where = where.map(x => {
+          return ' ( ' + x + ' ) ';
         });
         where = [where.join(' and ')]; 
       }
@@ -94,7 +97,10 @@ export default class LoadSql {
       if(q.page !== undefined && q.size !== undefined) {
         size = parseInt(q.size, 10);
         page = parseInt(q.page, 10);
-        params = [(page * size), size];
+        params = {
+          offset: (page * size),
+          pageSize: size
+        };
       }
     }
 
@@ -107,7 +113,7 @@ export default class LoadSql {
       if(orderBy.length > 0) {
         sql = 'select * from (' + sql  + ') temp order by ' + orderBy.join(',') + ' ';
       }
-      if(params) {
+      if(params !== undefined) {
         sql += ' limit ?, ?';
         // console.log('sql: ', sql, params);
         const result: SqlResult = {
@@ -160,7 +166,7 @@ export default class LoadSql {
   }
 
   async loadForMssql (file: string, q?: QueryOptions): Promise<SqlResult> {
-    let params: any = null;
+    let params = undefined;
     let orderBy: string[] = [];
     let where: string[] = [];
     if(q !== undefined) {
@@ -207,10 +213,10 @@ export default class LoadSql {
         size = parseInt(q.size, 10);
         page = parseInt(q.page, 10);
         let offset = page * size;
-        params = [
-          { _offset: offset }, 
-          { _size: size }
-        ];
+        params = {
+          offset: offset, 
+          pageSize: size 
+        };
       }
     }
     let hasOrder = /\sorder\s+by/i;
