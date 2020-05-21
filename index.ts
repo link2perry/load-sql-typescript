@@ -18,11 +18,6 @@ export interface SqlResult {
   params?: string[]
 }
 
-export class SqlResultImpl {
-  sql?: string;
-  params?: string[];
-}
-
 export interface QueryOptions {
   dbType?: string,
   filtering?: string,
@@ -31,8 +26,6 @@ export interface QueryOptions {
   page?: string,
   size?: string
 }
-
-export class QueryOptionsImpl implements QueryOptions {}
 
 export default class LoadSql {
   sqlDir: string;
@@ -54,7 +47,7 @@ export default class LoadSql {
     }
   }
 
-  async loadForMysql (file: string, q?: QueryOptions) {
+  async loadForMysql (file: string, q?: QueryOptions): Promise<SqlResult> {
     let params: any = null;
     let orderBy: string[] = [];
     let where: string[] = [];
@@ -166,7 +159,7 @@ export default class LoadSql {
     }
   }
 
-  loadForMssql (file: string, q?: QueryOptions) {
+  async loadForMssql (file: string, q?: QueryOptions): Promise<SqlResult> {
     let params: any = null;
     let orderBy: string[] = [];
     let where: string[] = [];
@@ -269,6 +262,7 @@ export default class LoadSql {
         return result;
       } catch (err) {
         console.log(err);
+        throw err;
       }
     }
   }
